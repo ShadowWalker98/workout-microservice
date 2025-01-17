@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 	"workout-microservice/internal/validator"
@@ -10,8 +11,10 @@ import (
 
 const insertQuery = `INSERT INTO exercises (exercise_name, exercise_description) VALUES ($1, $2) RETURNING exercise_id;`
 const deleteQueryOneId = `DELETE FROM exercises WHERE exercise_id = $1;`
-const updateQuery = `UPDATE exercises SET (exercise_name, exercise_description) = ($1, $2) WHERE exercise_id = $3;`
-const selectOneQuery = `SELECT exercise_id, exercise_name, exercise_description FROM exercises WHERE exercise_id = $1;`
+const updateQuery = `UPDATE exercises SET (exercise_name, exercise_description) = ($1, $2) 
+                 WHERE exercise_id = $3 AND exercise_version = $4;`
+const selectOneQuery = `SELECT exercise_id, exercise_name, exercise_description, exercise_version FROM exercises 
+                                                        WHERE exercise_id = $1;`
 
 type ExerciseModel struct {
 	db *sql.DB
@@ -21,10 +24,10 @@ type Exercise struct {
 	ExerciseID          int
 	ExerciseName        string
 	ExerciseDescription string
+	ExerciseVersion     int `json:"-"`
 }
 
 func ValidateExercise(v *validator.Validator, exercise *Exercise) bool {
-	v.Check(exercise.ExerciseID >= 1, "Exercise ID: ", "cannot be less than 1")
 	v.Check(exercise.ExerciseName != "", "Exercise name: ", "cannot be empty")
 	v.Check(exercise.ExerciseDescription != "", "Exercise description: ", "cannot be empty")
 
@@ -79,16 +82,17 @@ func (e ExerciseModel) Update(exercise *Exercise) error {
 		return ErrRecordNotFound
 	}
 
-	args := []interface{}{exercise.ExerciseName, exercise.ExerciseDescription, exercise.ExerciseID}
-	result, err := e.db.ExecContext(ctx, updateQuery, args...)
+	args := []interface{}{exercise.ExerciseName, exercise.ExerciseDescription, exercise.ExerciseID, exercise.ExerciseVersion}
+	_, err := e.db.ExecContext(ctx, updateQuery, args...)
 	if err != nil {
-		return err
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrEditConflict
+		default:
+			return err
+		}
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if rowsAffected == 0 {
-		return ErrRecordNotFound
-	}
 	return nil
 }
 
@@ -105,7 +109,8 @@ func (e ExerciseModel) Select(id int) (*Exercise, error) {
 	err := e.db.QueryRowContext(ctx, selectOneQuery, id).Scan(
 		&exercise.ExerciseID,
 		&exercise.ExerciseName,
-		&exercise.ExerciseDescription)
+		&exercise.ExerciseDescription,
+		&exercise.ExerciseVersion)
 	if err != nil {
 		return nil, ErrRecordNotFound
 	}
