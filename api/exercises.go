@@ -10,11 +10,6 @@ import (
 
 func (app *application) addExerciseHandler(w http.ResponseWriter, r *http.Request) {
 
-	if r.Method != http.MethodPost {
-		app.methodNotAllowed(w, r, errors.New("incorrect method"))
-		return
-	}
-
 	var input struct {
 		ExerciseName        string `json:"exercise_name"`
 		ExerciseDescription string `json:"exercise_description"`
@@ -55,27 +50,14 @@ func (app *application) addExerciseHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (app *application) deleteExerciseHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodDelete {
-		app.methodNotAllowed(w, r, errors.New("incorrect method"))
-		return
-	}
 
-	var input struct {
-		ExerciseId int `json:"exercise_id"`
-	}
-
-	err := app.readJSON(w, r, &input)
-	if err != nil {
+	ExerciseId, err := app.readIDParams(r)
+	if err != nil || ExerciseId < 1 {
 		app.badRequestResponse(w, r, err)
 		return
 	}
 
-	if input.ExerciseId < 1 {
-		app.badRequestResponse(w, r, errors.New("bad request parameters"))
-		return
-	}
-
-	err = app.models.ExerciseModel.Delete(input.ExerciseId)
+	err = app.models.ExerciseModel.Delete(ExerciseId)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -88,8 +70,8 @@ func (app *application) deleteExerciseHandler(w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	app.logger.Printf("Exercise with id %d deleted successfully!", input.ExerciseId)
-	message := fmt.Sprintf("Exercise with id %d deleted successfully", input.ExerciseId)
+	app.logger.Printf("Exercise with id %d deleted successfully!", ExerciseId)
+	message := fmt.Sprintf("Exercise with id %d deleted successfully", ExerciseId)
 	env := envelope{
 		"message": message,
 	}
@@ -100,24 +82,25 @@ func (app *application) deleteExerciseHandler(w http.ResponseWriter, r *http.Req
 }
 
 func (app *application) updateExerciseHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPatch {
-		app.methodNotAllowed(w, r, errors.New("incorrect method"))
+
+	ExerciseId, err := app.readIDParams(r)
+	if err != nil || ExerciseId < 1 {
+		app.badRequestResponse(w, r, err)
 		return
 	}
 
 	var input struct {
-		ExerciseId          *int    `json:"exercise_id"`
 		ExerciseName        *string `json:"exercise_name"`
 		ExerciseDescription *string `json:"exercise_description"`
 	}
 
-	err := app.readJSON(w, r, &input)
+	err = app.readJSON(w, r, &input)
 	if err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
 
-	exercise, err := app.models.ExerciseModel.Select(*input.ExerciseId)
+	exercise, err := app.models.ExerciseModel.Select(ExerciseId)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -127,13 +110,6 @@ func (app *application) updateExerciseHandler(w http.ResponseWriter, r *http.Req
 			app.serverErrorResponse(w, r, err)
 			return
 		}
-	}
-
-	if input.ExerciseId != nil {
-		exercise.ExerciseID = *input.ExerciseId
-	} else {
-		app.badRequestResponse(w, r, errors.New("missing exercise id"))
-		return
 	}
 
 	if input.ExerciseName != nil {
