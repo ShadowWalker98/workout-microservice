@@ -11,8 +11,8 @@ import (
 
 const insertQuery = `INSERT INTO exercises (exercise_name, exercise_description) VALUES ($1, $2) RETURNING exercise_id;`
 const deleteQueryOneId = `DELETE FROM exercises WHERE exercise_id = $1;`
-const updateQuery = `UPDATE exercises SET (exercise_name, exercise_description) = ($1, $2) 
-                 WHERE exercise_id = $3 AND exercise_version = $4;`
+const updateQuery = `UPDATE exercises SET (exercise_name, exercise_description, exercise_version) = ($1, $2, $3) 
+                 WHERE exercise_id = $4 AND exercise_version = $5;`
 const selectOneQuery = `SELECT exercise_id, exercise_name, exercise_description, exercise_version FROM exercises 
                                                         WHERE exercise_id = $1;`
 
@@ -82,8 +82,13 @@ func (e ExerciseModel) Update(exercise *Exercise) error {
 		return ErrRecordNotFound
 	}
 
-	args := []interface{}{exercise.ExerciseName, exercise.ExerciseDescription, exercise.ExerciseID, exercise.ExerciseVersion}
-	_, err := e.db.ExecContext(ctx, updateQuery, args...)
+	args := []interface{}{
+		exercise.ExerciseName,
+		exercise.ExerciseDescription,
+		exercise.ExerciseVersion + 1,
+		exercise.ExerciseID,
+		exercise.ExerciseVersion}
+	res, err := e.db.ExecContext(ctx, updateQuery, args...)
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
@@ -91,6 +96,14 @@ func (e ExerciseModel) Update(exercise *Exercise) error {
 		default:
 			return err
 		}
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if rowsAffected == 0 {
+		return ErrRecordNotFound
+	}
+	if err != nil {
+		return err
 	}
 
 	return nil
