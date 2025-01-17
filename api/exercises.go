@@ -55,7 +55,7 @@ func (app *application) addExerciseHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (app *application) deleteExerciseHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+	if r.Method != http.MethodDelete {
 		app.methodNotAllowed(w, r, errors.New("incorrect method"))
 		return
 	}

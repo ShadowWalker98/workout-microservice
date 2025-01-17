@@ -10,6 +10,7 @@ func (app *application) registerHealthCheck() {
 }
 
 func (app *application) registerExerciseHandlers() {
+	// TODO: Update to use the ID param provided in the URL
 	app.mux.HandleFunc("/add-exercise", app.addExerciseHandler)
 	app.mux.HandleFunc("/delete-exercise", app.deleteExerciseHandler)
 	app.mux.HandleFunc("/update-exercise", app.updateExerciseHandler)
