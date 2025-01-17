@@ -11,6 +11,7 @@ import (
 const insertQuery = `INSERT INTO exercises (exercise_name, exercise_description) VALUES ($1, $2) RETURNING exercise_id;`
 const deleteQueryOneId = `DELETE FROM exercises WHERE exercise_id = $1;`
 const updateQuery = `UPDATE exercises SET (exercise_name, exercise_description) = ($1, $2) WHERE exercise_id = $3;`
+const selectOneQuery = `SELECT exercise_id, exercise_name, exercise_description FROM exercises WHERE exercise_id = $1;`
 
 type ExerciseModel struct {
 	db *sql.DB
@@ -23,6 +24,7 @@ type Exercise struct {
 }
 
 func ValidateExercise(v *validator.Validator, exercise *Exercise) bool {
+	v.Check(exercise.ExerciseID >= 1, "Exercise ID: ", "cannot be less than 1")
 	v.Check(exercise.ExerciseName != "", "Exercise name: ", "cannot be empty")
 	v.Check(exercise.ExerciseDescription != "", "Exercise description: ", "cannot be empty")
 
@@ -88,4 +90,25 @@ func (e ExerciseModel) Update(exercise *Exercise) error {
 		return ErrRecordNotFound
 	}
 	return nil
+}
+
+func (e ExerciseModel) Select(id int) (*Exercise, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	if id < 1 {
+		return nil, ErrRecordNotFound
+	}
+
+	exercise := Exercise{}
+
+	err := e.db.QueryRowContext(ctx, selectOneQuery, id).Scan(
+		&exercise.ExerciseID,
+		&exercise.ExerciseName,
+		&exercise.ExerciseDescription)
+	if err != nil {
+		return nil, ErrRecordNotFound
+	}
+
+	return &exercise, nil
 }
