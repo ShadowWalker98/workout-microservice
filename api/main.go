@@ -27,7 +27,6 @@ type config struct {
 type application struct {
 	config config
 	logger *log.Logger
-	mux    *http.ServeMux
 	models data.Models
 }
 
@@ -48,12 +47,9 @@ func main() {
 
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
-	mux := http.NewServeMux()
-
 	app := &application{
 		config: cfg,
 		logger: logger,
-		mux:    mux,
 	}
 
 	app.routes()
@@ -71,7 +67,7 @@ func main() {
 
 	srv := http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.port),
-		Handler:      mux,
+		Handler:      app.routes(),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,

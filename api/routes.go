@@ -1,17 +1,17 @@
 package main
 
-func (app *application) routes() {
-	app.registerHealthCheck()
-	app.registerExerciseHandlers()
-}
+import (
+	"github.com/julienschmidt/httprouter"
+	"net/http"
+)
 
-func (app *application) registerHealthCheck() {
-	app.mux.HandleFunc("/healthcheck", app.healthcheckHandler)
-}
+func (app *application) routes() *httprouter.Router {
+	router := httprouter.New()
+	router.HandlerFunc(http.MethodGet, "/v1/healthcheck", app.healthcheckHandler)
 
-func (app *application) registerExerciseHandlers() {
-	// TODO: Update to use the ID param provided in the URL
-	app.mux.HandleFunc("/add-exercise", app.addExerciseHandler)
-	app.mux.HandleFunc("/delete-exercise", app.deleteExerciseHandler)
-	app.mux.HandleFunc("/update-exercise", app.updateExerciseHandler)
+	router.HandlerFunc(http.MethodPost, "/exercises", app.addExerciseHandler)
+	router.HandlerFunc(http.MethodDelete, "/exercises/:id", app.deleteExerciseHandler)
+	router.HandlerFunc(http.MethodPatch, "/exercises/:id", app.updateExerciseHandler)
+
+	return router
 }
