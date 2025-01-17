@@ -147,3 +147,17 @@ func (app *application) updateExerciseHandler(w http.ResponseWriter, r *http.Req
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+func (app *application) getExercisesHandler(w http.ResponseWriter, r *http.Request) {
+	exercises, err := app.models.ExerciseModel.SelectAll()
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"exercises": exercises}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+}

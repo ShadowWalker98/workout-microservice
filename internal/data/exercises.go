@@ -15,6 +15,7 @@ const updateQuery = `UPDATE exercises SET (exercise_name, exercise_description, 
                  WHERE exercise_id = $4 AND exercise_version = $5;`
 const selectOneQuery = `SELECT exercise_id, exercise_name, exercise_description, exercise_version FROM exercises 
                                                         WHERE exercise_id = $1;`
+const selectAllQuery = `SELECT exercise_id, exercise_name, exercise_description FROM exercises;`
 
 type ExerciseModel struct {
 	db *sql.DB
@@ -129,4 +130,27 @@ func (e ExerciseModel) Select(id int) (*Exercise, error) {
 	}
 
 	return &exercise, nil
+}
+
+func (e ExerciseModel) SelectAll() ([]Exercise, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	rows, err := e.db.QueryContext(ctx, selectAllQuery)
+	if err != nil {
+		fmt.Println("Error while fetching data from exercises table")
+		return nil, err
+	}
+
+	var exercises []Exercise
+
+	for rows.Next() {
+		var exercise Exercise
+		if err := rows.Scan(&exercise.ExerciseID, &exercise.ExerciseName, &exercise.ExerciseDescription); err != nil {
+			fmt.Println("Error while fetching rows")
+			return nil, err
+		}
+		exercises = append(exercises, exercise)
+	}
+	return exercises, nil
 }
