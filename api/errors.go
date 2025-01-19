@@ -42,6 +42,6 @@ func (app *application) methodNotAllowed(w http.ResponseWriter, r *http.Request,
 
 func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Request, err error) {
 	app.logError(r, err)
-	message := fmt.Sprintf("Bad request! Please check parameters and try again!")
+	message := fmt.Sprintf(err.Error())
 	app.errorResponse(w, r, http.StatusBadRequest, message)
 }

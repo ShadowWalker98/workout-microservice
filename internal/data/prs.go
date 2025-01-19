@@ -11,7 +11,7 @@ import (
 
 const insertPrQuery = `INSERT INTO exercise_prs(USER_ID, EXERCISE_ID, PR) VALUES ($1, $2, $3)`
 const selectPrQuery = `SELECT pr FROM exercise_prs WHERE (user_id, exercise_id) = ($1, $2)`
-const updatePrQuery = `UPDATE exercise_prs SET pr = $1 WHERE (user_id, exercise_id) = ($1, $2)`
+const updatePrQuery = `UPDATE exercise_prs SET pr = $1 WHERE (user_id, exercise_id) = ($2, $3)`
 const deletePrQuery = `DELETE FROM exercise_prs WHERE (user_id, exercise_id) = ($1, $2)`
 
 type Pr struct {
@@ -29,7 +29,7 @@ func (p PrModel) Insert(pr Pr) error {
 	if err != nil {
 		// if there aren't any rows then we insert the row
 		if errors.Is(err, sql.ErrNoRows) {
-			err2 := p.runQuery(pr, insertExerciseQuery)
+			err2 := p.runQuery(insertPrQuery, []interface{}{pr.UserId, pr.ExerciseId, pr.PersonalRecord})
 			if err2 != nil {
 				fmt.Printf("error while inserting row with user id: %d and exercise id: %d \n",
 					pr.UserId,
@@ -41,6 +41,8 @@ func (p PrModel) Insert(pr Pr) error {
 		}
 	}
 
+	oldPr.PersonalRecord = pr.PersonalRecord
+
 	err = p.Update(*oldPr)
 	if err != nil {
 		return err
@@ -50,17 +52,16 @@ func (p PrModel) Insert(pr Pr) error {
 }
 
 func (p PrModel) Update(pr Pr) error {
-	return p.runQuery(pr, updatePrQuery)
+	return p.runQuery(updatePrQuery, []interface{}{pr.PersonalRecord, pr.UserId, pr.ExerciseId})
 }
 
 func (p PrModel) Delete(pr Pr) error {
-	return p.runQuery(pr, deletePrQuery)
+	return p.runQuery(deletePrQuery, []interface{}{pr.UserId, pr.ExerciseId})
 }
 
-func (p PrModel) runQuery(pr Pr, query string) error {
+func (p PrModel) runQuery(query string, args []interface{}) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
-	args := []interface{}{pr.UserId, pr.ExerciseId}
 	_, err := p.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return err
@@ -68,6 +69,7 @@ func (p PrModel) runQuery(pr Pr, query string) error {
 	return nil
 }
 
+// TODO: Join on the exercises table and return consolidated information
 func (p PrModel) Get(userId int, exerciseId int) (*Pr, error) {
 	pr := Pr{}
 
@@ -92,7 +94,10 @@ func (p PrModel) Get(userId int, exerciseId int) (*Pr, error) {
 	return &pr, nil
 }
 
-func ValidatePr(v *validator.Validator, pr *Pr) {
-	v.Check(pr.UserId >= 1, "User id", " must be >= 1")
-	v.Check(pr.ExerciseId >= 1, "Exercise id", " must be >= 1")
+func ValidatePr(v *validator.Validator, pr *Pr, prRequired bool) {
+	v.Check(pr.UserId >= 1, "User id", "must be >= 1")
+	v.Check(pr.ExerciseId >= 1, "Exercise id", "must be >= 1")
+	if prRequired {
+		v.Check(pr.PersonalRecord > 0, "Personal Record", "must be > 0")
+	}
 }
