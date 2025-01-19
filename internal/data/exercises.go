@@ -9,13 +9,13 @@ import (
 	"workout-microservice/internal/validator"
 )
 
-const insertQuery = `INSERT INTO exercises (exercise_name, exercise_description) VALUES ($1, $2) RETURNING exercise_id;`
-const deleteQueryOneId = `DELETE FROM exercises WHERE exercise_id = $1;`
-const updateQuery = `UPDATE exercises SET (exercise_name, exercise_description, exercise_version) = ($1, $2, $3) 
+const insertExerciseQuery = `INSERT INTO exercises (exercise_name, exercise_description) VALUES ($1, $2) RETURNING exercise_id;`
+const deleteExerciseQuery = `DELETE FROM exercises WHERE exercise_id = $1;`
+const updateExerciseQuery = `UPDATE exercises SET (exercise_name, exercise_description, exercise_version) = ($1, $2, $3) 
                  WHERE exercise_id = $4 AND exercise_version = $5;`
-const selectOneQuery = `SELECT exercise_id, exercise_name, exercise_description, exercise_version FROM exercises 
+const selectOneExerciseQuery = `SELECT exercise_id, exercise_name, exercise_description, exercise_version FROM exercises 
                                                         WHERE exercise_id = $1;`
-const selectAllQuery = `SELECT exercise_id, exercise_name, exercise_description FROM exercises;`
+const selectAllExercisesQuery = `SELECT exercise_id, exercise_name, exercise_description FROM exercises;`
 
 type ExerciseModel struct {
 	db *sql.DB
@@ -43,7 +43,7 @@ func (e ExerciseModel) Insert(exercise *Exercise) error {
 	args := []interface{}{exercise.ExerciseName, exercise.ExerciseDescription}
 
 	err := e.db.QueryRowContext(ctx,
-		insertQuery,
+		insertExerciseQuery,
 		args...).Scan(&exercise.ExerciseID)
 	if err != nil {
 		fmt.Println(err)
@@ -60,7 +60,7 @@ func (e ExerciseModel) Delete(id int) error {
 	}
 
 	args := []interface{}{id}
-	result, err := e.db.ExecContext(ctx, deleteQueryOneId, args...)
+	result, err := e.db.ExecContext(ctx, deleteExerciseQuery, args...)
 	if err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func (e ExerciseModel) Update(exercise *Exercise) error {
 		exercise.ExerciseVersion + 1,
 		exercise.ExerciseID,
 		exercise.ExerciseVersion}
-	res, err := e.db.ExecContext(ctx, updateQuery, args...)
+	res, err := e.db.ExecContext(ctx, updateExerciseQuery, args...)
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
@@ -120,7 +120,7 @@ func (e ExerciseModel) Select(id int) (*Exercise, error) {
 
 	exercise := Exercise{}
 
-	err := e.db.QueryRowContext(ctx, selectOneQuery, id).Scan(
+	err := e.db.QueryRowContext(ctx, selectOneExerciseQuery, id).Scan(
 		&exercise.ExerciseID,
 		&exercise.ExerciseName,
 		&exercise.ExerciseDescription,
@@ -136,7 +136,7 @@ func (e ExerciseModel) SelectAll() ([]Exercise, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	rows, err := e.db.QueryContext(ctx, selectAllQuery)
+	rows, err := e.db.QueryContext(ctx, selectAllExercisesQuery)
 	if err != nil {
 		fmt.Println("Error while fetching data from exercises table")
 		return nil, err
