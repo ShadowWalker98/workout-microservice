@@ -14,5 +14,6 @@ func (app *application) routes() *httprouter.Router {
 	router.HandlerFunc(http.MethodPatch, "/v1/exercises/:id", app.updateExerciseHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/exercises", app.getExercisesHandler)
 
+	router.HandlerFunc(http.MethodGet, "/v1/prs", app.getPersonalRecordsHandler)
 	return router
 }
