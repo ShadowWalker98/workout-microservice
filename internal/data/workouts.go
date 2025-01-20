@@ -2,6 +2,7 @@ package data
 
 import (
 	"database/sql"
+	"time"
 )
 
 type WorkoutModel struct {
@@ -9,9 +10,12 @@ type WorkoutModel struct {
 }
 
 type Workout struct {
-	UserID    int
-	WorkoutID int
-	CreatedAt string
-	Duration  string
-	Reps      int
+	WorkoutId  int       `json:"workout_id"`
+	UserId     int       `json:"user_id"`
+	CreatedAt  time.Time `json:"created_at"`
+	ExerciseId int       `json:"exercise_id"`
+	Duration   int       `json:"duration"`
+	Sets       int       `json:"sets"`
+	Reps       []int     `json:"reps"`
+	Weights    []int     `json:"weights"`
 }
