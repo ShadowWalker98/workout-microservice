@@ -17,18 +17,49 @@ var (
 
 func (app *application) getPersonalRecordsHandlerByUserIdAndExerciseId(w http.ResponseWriter, r *http.Request) {
 
-	err, pr, done := app.getPrQueryParams(w, r, false)
-	if !done || err != nil {
+	// I plan to restructure this get call on the basis of user id and exercise id.
+	// if both are provided, we filter by both.
+	// if only user id is provided, then we filter only on the basis of that
+	// if none of them are provided then we return a bad request response :: should we validate this on the frontend
+	// or the backend?
 
-		fmt.Printf("error occurred while getting personal record with user id: %d and exercise id: %d\n",
-			pr.UserId, pr.ExerciseId)
-		return
+	queryValues := r.URL.Query()
+	// fetch the user id first
+	if !queryValues.Has(userIdStr) {
+		app.badRequestResponse(w, r, errors.New("user id is missing, must be in the form user_id=? "))
 	}
 
-	fetchedPr, err := app.models.PrModel.Get(pr.UserId, pr.ExerciseId)
+	userId, err := strconv.ParseInt(queryValues.Get(userIdStr), 10, 64)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+	}
 
-	env := envelope{
-		"pr": fetchedPr,
+	var exerciseId int64
+	if queryValues.Has(exerciseIdStr) {
+		exerciseId, err = strconv.ParseInt(queryValues.Get(exerciseIdStr), 10, 64)
+	} else {
+		exerciseId = -1
+	}
+
+	var env envelope
+	if exerciseId > 0 {
+		fetchedPr, err2 := app.models.PrModel.Get(int(userId), int(exerciseId))
+		if err2 != nil {
+			app.serverErrorResponse(w, r, err2)
+			return
+		}
+		env = envelope{
+			"pr": []data.ConsolidatedPr{*fetchedPr},
+		}
+	} else {
+		prList, err2 := app.models.PrModel.GetAll(int(userId))
+		if err2 != nil {
+			app.serverErrorResponse(w, r, err2)
+			return
+		}
+		env = envelope{
+			"pr": prList,
+		}
 	}
 
 	err = app.writeJSON(w, http.StatusOK, env, nil)
@@ -73,11 +104,18 @@ func (app *application) updatePersonalRecordsHandler(w http.ResponseWriter, r *h
 
 		fmt.Printf("error occurred while updating personal record with user id: %d and exercise id: %d\n",
 			pr.UserId, pr.ExerciseId)
+		app.badRequestResponse(w, r, errors.New(fmt.Sprintf("error occurred while parsing personal record with user id: %d and exercise id: %d\n",
+			pr.UserId, pr.ExerciseId)))
 		return
 	}
 
 	err = app.models.PrModel.Update(pr)
 	if err != nil {
+		if errors.Is(err, data.ErrRecordNotFound) {
+			app.badRequestResponse(w, r, err)
+			return
+		}
+
 		app.serverErrorResponse(w, r, err)
 		return
 	}
@@ -159,7 +197,7 @@ func (app *application) getPrQueryParams(w http.ResponseWriter, r *http.Request,
 		return nil, data.Pr{}, true
 	}
 
-	if !queryValues.Has("personal_record") {
+	if prRequired && !queryValues.Has("personal_record") {
 		app.badRequestResponse(w, r, errors.New("personal_record is missing, must be in the form personal_record=? "))
 		return nil, data.Pr{}, true
 	}
