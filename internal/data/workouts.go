@@ -15,17 +15,25 @@ type WorkoutModel struct {
 }
 
 const insertWorkoutQuery = `INSERT INTO workouts_table(
-                           workout_id, 
                            user_id,  
                            exercise_id, 
                            duration, 
                            sets, 
                            reps, 
                            weights) VALUES(
-                                 $1, $2, $3, $4, $5, $6, $7          
+                                 $1, $2, $3, $4, $5, $6         
                            );`
 
 const deleteWorkoutQuery = `DELETE FROM workouts_table WHERE workout_id = $1;`
+
+const updateWorkQuery = `UPDATE workouts_table SET (
+                           exercise_id, 
+                           duration, 
+                           sets, 
+                           reps, 
+                           weights) = (
+                                 $2, $3, $4, $5, $6         
+                           ) WHERE (workout_id, user_id) = ($7, $1);`
 
 type Workout struct {
 	WorkoutId  int       `json:"workout_id"`
@@ -44,7 +52,7 @@ func (w WorkoutModel) Insert(workout *Workout) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	args := []interface{}{workout.WorkoutId,
+	args := []interface{}{
 		workout.UserId,
 		workout.ExerciseId,
 		workout.Duration,
@@ -96,6 +104,30 @@ func (w WorkoutModel) Delete(workoutId int) error {
 }
 
 func (w WorkoutModel) Update(workout *Workout) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	args := []interface{}{
+		workout.UserId,
+		workout.ExerciseId,
+		workout.Duration,
+		workout.Sets,
+		pq.Array(workout.Reps),
+		pq.Array(workout.Weights),
+		workout.WorkoutId,
+	}
+
+	res, err := w.db.ExecContext(ctx, updateWorkQuery, args...)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return errors.New("error while getting rows affected")
+	}
+	if rowsAffected <= 0 {
+		return ErrRecordNotFound
+	}
 	return nil
 }
 
@@ -104,7 +136,6 @@ func (w WorkoutModel) Get(workoutIds []int) ([]Workout, error) {
 }
 
 func ValidateWorkout(v *validator.Validator, workout *Workout) bool {
-	v.Check(workout.WorkoutId > 0, "workout id", "should be > 0")
 	v.Check(workout.UserId > 0, "user id", "should be > 0")
 	v.Check(workout.Sets > 0, "sets", "should be > 0")
 	v.Check(workout.ExerciseId > 0, "exercise id", "should be > 0")

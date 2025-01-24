@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS workouts_table (
     PRIMARY KEY (workout_id, user_id)
 );
 
+
 ALTER TABLE workouts_table
 ADD CONSTRAINT SETS_CONSTRAINTS CHECK (sets > 0);
 
