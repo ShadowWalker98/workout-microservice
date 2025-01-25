@@ -36,67 +36,48 @@ EXECUTE PROCEDURE pr_updating_function();
 
 -- TRIGGER FOR DELETING FROM PR TABLE WHEN THERE IS A MAX RECORD WORKOUT DELETED FROM THE WORKOUT TABLE
 
+CREATE OR REPLACE TRIGGER pr_updating_trigger
+    BEFORE INSERT OR UPDATE
+    ON workouts_table
+    FOR EACH ROW
+EXECUTE PROCEDURE pr_updating_function();
+
+-- TRIGGER FOR DELETING FROM PR TABLE WHEN THERE IS A MAX RECORD WORKOUT DELETED FROM THE WORKOUT TABLE
+
+CREATE OR REPLACE TRIGGER pr_updating_trigger
+    BEFORE INSERT OR UPDATE
+    ON workouts_table
+    FOR EACH ROW
+EXECUTE PROCEDURE pr_updating_function();
+
+-- TRIGGER FOR DELETING FROM PR TABLE WHEN THERE IS A MAX RECORD WORKOUT DELETED FROM THE WORKOUT TABLE
+
 CREATE OR REPLACE FUNCTION pr_deleting_function()
     RETURNS TRIGGER
     LANGUAGE plpgsql
 AS $$
 DECLARE
-    local_exercise_id int;
-    local_user_id int;
-    local_weights int[];
-    local_pr int;
     new_max_pr int;
-    existing_pr int;
 BEGIN
+    -- I have the user id and the exercise id, I will recompute the PR for this exercise
+    -- after deleting it from the prs table
+    DELETE FROM exercise_prs WHERE (exercise_prs.user_id, exercise_prs.exercise_id) = (old.user_id, old.exercise_id);
+    -- now recompute the new max pr
+    SELECT MAX(nums)
+    INTO new_max_pr
+    FROM (
+             SELECT unnest(weights) AS nums
+             FROM workouts_table
+         ) wtn;
 
-    -- I am getting the user id and exercise id from the workout info
-    SELECT user_id, exercise_id, weights
-    INTO local_user_id, local_exercise_id, local_pr
-    FROM workouts_table
-    WHERE (workout_id) = (old.workout_id);
-
-    -- getting the max weight in this workout
-    SELECT MAX(nums) INTO local_pr FROM unnest(local_weights) AS nums;
-
-    -- checking if the max weight in the deleted workout is the max pr of the person
-
-    SELECT pr INTO existing_pr FROM exercise_prs
-    WHERE (exercise_prs.user_id, exercise_prs.exercise_id) = (local_user_id, local_exercise_id);
-
-    -- if they are equal then we have to update the exercise prs table
-    -- otherwise the deletion does not impact that table at all
-
-    IF local_pr = existing_pr THEN
-        -- if they are equal then we replace it with the next best one
-        -- putting the next best weight pr into max_pr
-        SELECT MAX(weights) WHERE weights = (SELECT MAX(weights)
-                                             FROM workouts_table
-                                             WHERE
-                                                     (user_id, exercise_id) =
-                                                     (new.user_id, new.exercise_id)
-                                               AND workout_id <> old.workout_id
-        )
-
-        INTO new_max_pr;
-        -- if max_pr is null after this deletion then we remove the entry from the prs table
-        IF new_max_pr IS NULL THEN
-            DELETE FROM exercise_prs
-            WHERE (exercise_prs.exercise_id, exercise_prs.user_id) = (local_exercise_id, local_user_id);
-        ELSE
-            -- if it is not null then we update the exercise prs table with the new_max_pr
-            UPDATE exercise_prs
-            SET
-                pr = new_max_pr
-            WHERE
-                    (user_id, exercise_id) = (local_user_id, local_exercise_id);
-        END IF;
-    END IF;
+    INSERT INTO exercise_prs(USER_ID, EXERCISE_ID, PR) VALUES(old.user_id, old.exercise_id, new_max_pr);
+    RETURN NULL;
 END;
 $$;
 
 
 CREATE OR REPLACE TRIGGER pr_deletion_trigger
-    BEFORE DELETE
+    AFTER DELETE
     ON workouts_table
-    FOR EACH STATEMENT
+    FOR EACH ROW
 EXECUTE PROCEDURE pr_deleting_function();
