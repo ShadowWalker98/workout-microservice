@@ -131,7 +131,11 @@ func (w WorkoutModel) Update(workout *Workout) error {
 	return nil
 }
 
-func (w WorkoutModel) Get(workoutIds []int) ([]Workout, error) {
+func (w WorkoutModel) Get(workoutId int) (*Workout, error) {
+	return nil, nil
+}
+
+func (w WorkoutModel) GetAll(userId, exerciseId int) ([]*Workout, error) {
 	return nil, nil
 }
 

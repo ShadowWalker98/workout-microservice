@@ -9,6 +9,77 @@ import (
 	"workout-microservice/internal/validator"
 )
 
+func (app *application) getWorkoutsHandler(w http.ResponseWriter, r *http.Request) {
+	queryValues := r.URL.Query()
+	if queryValues.Has("workout_id") {
+		workoutId, err := strconv.ParseInt(queryValues.Get("workout_id"), 10, 64)
+		if err != nil {
+			app.logger.Println("error occurred while parsing workout id", err)
+			app.badRequestResponse(w, r, err)
+			return
+		}
+		workout, err := app.models.WorkoutModel.Get(int(workoutId))
+		if err != nil {
+			if errors.Is(err, data.ErrRecordNotFound) {
+				app.badRequestResponse(w, r, errors.New("the requested workout does not exist"))
+				return
+			} else {
+				app.serverErrorResponse(w, r, err)
+				return
+			}
+		}
+		if workout == nil {
+			app.badRequestResponse(w, r, errors.New("workout does not exist"))
+			return
+		}
+		workouts := make([]data.Workout, 0, 1)
+		workouts = append(workouts, *workout)
+		env := envelope{
+			"workout": workouts,
+		}
+		err = app.writeJSON(w, http.StatusOK, env, nil)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
+	} else if queryValues.Has("user_id") && queryValues.Has("exercise_id") {
+		userId, err := strconv.ParseInt(queryValues.Get("user_id"), 10, 64)
+		if err != nil {
+			app.logger.Println("error occurred while parsing user id", err)
+			app.badRequestResponse(w, r, err)
+			return
+		}
+
+		exerciseId, err := strconv.ParseInt(queryValues.Get("exercise_id"), 10, 64)
+		if err != nil {
+			app.logger.Println("error occurred while parsing exercise id", err)
+			app.badRequestResponse(w, r, err)
+			return
+		}
+
+		workouts, err := app.models.WorkoutModel.GetAll(int(userId), int(exerciseId))
+		if err != nil {
+			app.badRequestResponse(w, r, err)
+			return
+		}
+
+		if workouts == nil {
+			app.badRequestResponse(w, r, errors.New("no workouts found"))
+			return
+		}
+
+		env := envelope{
+			"workout": workouts,
+		}
+
+		err = app.writeJSON(w, http.StatusOK, env, nil)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
+	}
+}
+
 func (app *application) addWorkoutHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		UserId     int   `json:"user_id"`
