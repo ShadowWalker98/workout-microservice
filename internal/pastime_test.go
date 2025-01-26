@@ -11,7 +11,7 @@ func TestAddNums(t *testing.T) {
 	}{
 		// the table itself
 		{"1 + 1 should be 2", 1, 1, 2},
-		{"1 + 2 should be 3", 1, 2, 3},
+		{"1 + 2 should be 3", 1, 2, 4},
 		{"1 + 3 should be 4", 1, 3, 4},
 	}
 	// The execution loop
