@@ -35,6 +35,9 @@ const updateWorkQuery = `UPDATE workouts_table SET (
                                  $2, $3, $4, $5, $6         
                            ) WHERE (workout_id, user_id) = ($7, $1);`
 
+const selectAllWorkQuery = `SELECT workout_id, exercise_id, user_id, duration, sets, reps, weights
+FROM workouts_table WHERE (user_id, exercise_id) = ($1, $2);`
+
 type Workout struct {
 	WorkoutId  int       `json:"workout_id"`
 	UserId     int       `json:"user_id"`
@@ -136,7 +139,10 @@ func (w WorkoutModel) Get(workoutId int) (*Workout, error) {
 }
 
 func (w WorkoutModel) GetAll(userId, exerciseId int) ([]*Workout, error) {
+	_, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
 	return nil, nil
+	//rows, err := w.db.ExecContext(selectAllWorkQuery)
 }
 
 func ValidateWorkout(v *validator.Validator, workout *Workout) bool {
