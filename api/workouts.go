@@ -18,7 +18,7 @@ func (app *application) getWorkoutsHandler(w http.ResponseWriter, r *http.Reques
 			app.badRequestResponse(w, r, err)
 			return
 		}
-		workout, err := app.models.WorkoutModel.Get(int(workoutId))
+		workouts, err := app.models.WorkoutModel.Get(int(workoutId))
 		if err != nil {
 			if errors.Is(err, data.ErrRecordNotFound) {
 				app.badRequestResponse(w, r, errors.New("the requested workout does not exist"))
@@ -28,12 +28,10 @@ func (app *application) getWorkoutsHandler(w http.ResponseWriter, r *http.Reques
 				return
 			}
 		}
-		if workout == nil {
+		if len(workouts) == 0 {
 			app.badRequestResponse(w, r, errors.New("workout does not exist"))
 			return
 		}
-		workouts := make([]data.Workout, 0, 1)
-		workouts = append(workouts, *workout)
 		env := envelope{
 			"workout": workouts,
 		}
@@ -77,6 +75,8 @@ func (app *application) getWorkoutsHandler(w http.ResponseWriter, r *http.Reques
 			app.serverErrorResponse(w, r, err)
 			return
 		}
+	} else {
+		app.badRequestResponse(w, r, errors.New("please specify either workout id or user id and exercise id"))
 	}
 }
 
