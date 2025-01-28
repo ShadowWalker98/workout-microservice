@@ -9,6 +9,8 @@ import (
 	"workout-microservice/internal/validator"
 )
 
+// TODO: Refactor code to make reusable functions
+
 func (app *application) getWorkoutsHandler(w http.ResponseWriter, r *http.Request) {
 	queryValues := r.URL.Query()
 	if queryValues.Has("workout_id") {
@@ -18,7 +20,7 @@ func (app *application) getWorkoutsHandler(w http.ResponseWriter, r *http.Reques
 			app.badRequestResponse(w, r, err)
 			return
 		}
-		workouts, err := app.models.WorkoutModel.Get(int(workoutId))
+		workouts, err := app.models.WorkoutModel.GetByWorkoutId(int(workoutId))
 		if err != nil {
 			if errors.Is(err, data.ErrRecordNotFound) {
 				app.badRequestResponse(w, r, errors.New("the requested workout does not exist"))
@@ -55,12 +57,40 @@ func (app *application) getWorkoutsHandler(w http.ResponseWriter, r *http.Reques
 			return
 		}
 
-		workouts, err := app.models.WorkoutModel.GetAll(int(userId), int(exerciseId))
+		workouts, err := app.models.WorkoutModel.GetByUserIdAndExerciseId(int(userId), int(exerciseId))
 		if err != nil {
 			app.badRequestResponse(w, r, err)
 			return
 		}
 
+		if workouts == nil {
+			app.badRequestResponse(w, r, errors.New("no workouts found"))
+			return
+		}
+
+		env := envelope{
+			"workout": workouts,
+		}
+
+		err = app.writeJSON(w, http.StatusOK, env, nil)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
+	} else if queryValues.Has("user_id") {
+		userId, err := strconv.ParseInt(queryValues.Get("user_id"), 10, 64)
+		if err != nil {
+			app.logger.Println("error occurred while parsing user id", err)
+			app.badRequestResponse(w, r, err)
+			return
+		}
+
+		workouts, err := app.models.WorkoutModel.GetByUserId(int(userId))
+		if err != nil {
+			app.logger.Println(err)
+			app.serverErrorResponse(w, r, err)
+			return
+		}
 		if workouts == nil {
 			app.badRequestResponse(w, r, errors.New("no workouts found"))
 			return
