@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"strconv"
@@ -147,6 +148,15 @@ func (app *application) addWorkoutHandler(w http.ResponseWriter, r *http.Request
 
 	err = app.models.WorkoutModel.Insert(&workout)
 	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{
+		"message": "workout inserted successfully",
+	}, nil)
+	if err != nil {
+		fmt.Println(err)
 		app.serverErrorResponse(w, r, err)
 		return
 	}

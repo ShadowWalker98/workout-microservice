@@ -56,8 +56,6 @@ type Workout struct {
 }
 
 func (w WorkoutModel) Insert(workout *Workout) error {
-	fmt.Println(workout)
-	fmt.Println("Hello from insert function!")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
