@@ -45,3 +45,9 @@ func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Reques
 	message := fmt.Sprintf(err.Error())
 	app.errorResponse(w, r, http.StatusBadRequest, message)
 }
+
+func (app *application) unauthorizedResponse(w http.ResponseWriter, r *http.Request, err error) {
+	app.logError(r, err)
+	message := fmt.Sprintf(err.Error())
+	app.errorResponse(w, r, http.StatusUnauthorized, message)
+}
